@@ -1,0 +1,2 @@
+.kana-side .speak-large{flex:1;min-height:96px;font-size:calc(var(--font-size)*.72)}
+@media(max-width:900px){.kana-side .speak-large{grid-column:1 / -1;min-height:88px}}
