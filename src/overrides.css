@@ -1,0 +1,2 @@
+.global-stop{position:sticky;top:8px;right:auto;bottom:auto;align-self:flex-end;margin-bottom:-8px}
+@media(max-width:700px){.global-stop{align-self:stretch;margin:0}.global-stop .stop{width:100%}}
