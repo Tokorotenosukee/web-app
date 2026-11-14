@@ -1,2 +1,1 @@
-.kana-side .speak-large{flex:1;min-height:96px;font-size:calc(var(--font-size)*.72)}
-@media(max-width:900px){.kana-side .speak-large{grid-column:1 / -1;min-height:88px}}
+@media(max-height:760px){.compact-input textarea{height:38px;min-height:38px}.kana-keyboard{margin-top:5px;padding:6px}.keyboard-heading{margin-bottom:2px}.kana-key{min-height:38px}.kana-side button{min-height:44px}.kana-side .mark-control{font-size:calc(var(--font-size)*.8)}.kana-side .speak-large{min-height:92px}.hint{display:none}}
