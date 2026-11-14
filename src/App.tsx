@@ -6,7 +6,7 @@ type HistoryItem = { id: string; text: string; createdAt: number };
 const defaultCategories: Category[] = [
   { id: 'reply', label: '返事', phrases: ['はい', 'いいえ', 'ありがとう', 'ちょっと待って'] },
   { id: 'life', label: '生活', phrases: ['水が飲みたい', 'お腹がすいた', 'トイレに行きたい', '体勢を変えて'] },
-  { id: 'condition', label: '体調', phrases: ['痛い', '苦しい', '寒い', '暑い'] },
+  { id: 'condition', label: '体調', phrases: ['痛い', '苦しい', '寒い', '暑い', '首の角度を変えて', '首まだダメ'] },
   { id: 'talk', label: '会話', phrases: ['もう一度言って', 'わからない', '話したい', '家族を呼んで'] },
 ];
 const defaults: Settings = { fontSize: 28, buttonSize: 1, rate: 1, voiceName: '', saveHistory: true };
@@ -14,19 +14,26 @@ const kanaRows = [
   ['あ','か','さ','た','な','は','ま','や','ら','わ'],
   ['い','き','し','ち','に','ひ','み','ゆ','り','を'],
   ['う','く','す','つ','ぬ','ふ','む','よ','る','ん'],
-  ['え','け','せ','て','ね','へ','め','れ','ゔ','ー'],
-  ['お','こ','そ','と','の','ほ','も','ろ','ゑ','。'],
+  ['え','け','せ','て','ね','へ','め','れ','ー','゛'],
+  ['お','こ','そ','と','の','ほ','も','ろ','。','゜'],
 ];
-const extraKanaRows = [
-  ['が','ざ','だ','ば','ぱ','ぎ','じ','ぢ','び','ぴ'],
-  ['ぐ','ず','づ','ぶ','ぷ','げ','ぜ','で','べ','ぺ'],
-  ['ご','ぞ','ど','ぼ','ぽ','ゃ','ゅ','ょ','っ','、'],
-];
+const markMaps = {
+  dakuten: { 'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ','う':'ゔ' },
+  handakuten: { 'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ' },
+  small: { 'あ':'ぁ','い':'ぃ','う':'ぅ','え':'ぇ','お':'ぉ','や':'ゃ','ゆ':'ゅ','よ':'ょ','つ':'っ','わ':'ゎ' },
+} as const;
+const loadCategories = (): Category[] => {
+  const saved = load<Category[]>('ohanas-categories', defaultCategories);
+  if (!Array.isArray(saved)) return defaultCategories;
+  return saved.map(category => category.id === 'condition'
+    ? { ...category, phrases: Array.from(new Set([...category.phrases, '首の角度を変えて', '首まだダメ'])) }
+    : category);
+};
 const load = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; } };
 
 function App() {
   const [screen, setScreen] = useState('home');
-  const [categories, setCategories] = useState<Category[]>(() => load('ohanas-categories', defaultCategories));
+  const [categories, setCategories] = useState<Category[]>(loadCategories);
   const [settings, setSettings] = useState<Settings>(() => ({ ...defaults, ...load<Partial<Settings>>('ohanas-settings', {}) }));
   const [active, setActive] = useState('reply');
   const [current, setCurrent] = useState('');
@@ -77,9 +84,8 @@ function Home({current,category,categories,active,setActive,speak}:{current:stri
 function Input({text,setText,speak,stop}:{text:string;setText:(v:string)=>void;speak:(v:string)=>void;stop:()=>void}) {
   const addKana = (kana: string) => setText(`${text}${kana}`);
   const removeLast = () => setText(text.slice(0, -1));
-  const [showExtra, setShowExtra] = useState(false);
-  const rows = showExtra ? extraKanaRows : kanaRows;
-  return <section className="input-screen compact-input"><label htmlFor="speech-text">話したいこと</label><textarea id="speech-text" value={text} onChange={e=>setText(e.target.value)} placeholder="文字をタップして入力してください" rows={1} /><div className="kana-keyboard" aria-label="ひらがなキーボード"><div className="keyboard-heading">ひらがな</div><div className="kana-layout"><div className="kana-grid">{rows.map((row, rowIndex)=><div className="kana-row" key={rowIndex}>{row.map(kana=><button className="kana-key" key={kana} onClick={()=>addKana(kana)}>{kana}</button>)}</div>)}</div><div className="kana-side"><button onClick={()=>setShowExtra(value=>!value)}>{showExtra ? '五十音に戻る' : '濁音・小文字'}</button><button onClick={removeLast}>一文字削除</button><button onClick={()=>{if(confirm('入力中の文章を削除しますか？'))setText('')}}>全文削除</button><button className="speak-large" onClick={()=>speak(text)}>話す</button></div></div></div><p className="hint">文字をタップして文章を作れます。</p></section>
+  const applyMark = (mark: keyof typeof markMaps) => { const last = text.slice(-1); const replacement = markMaps[mark][last as keyof typeof markMaps[typeof mark]]; if (replacement) setText(`${text.slice(0, -1)}${replacement}`); };
+  return <section className="input-screen compact-input"><label htmlFor="speech-text">話したいこと</label><textarea id="speech-text" value={text} onChange={e=>setText(e.target.value)} placeholder="文字をタップして入力してください" rows={1} /><div className="kana-keyboard" aria-label="ひらがなキーボード"><div className="keyboard-heading">ひらがな</div><div className="kana-layout"><div className="kana-grid"><div className="kana-section-title">五十音</div>{kanaRows.map((row, rowIndex)=><div className="kana-row" key={`basic-${rowIndex}`}>{row.map(kana=>{const isDakuten=kana==='゛';const isHandakuten=kana==='゜';return <button className={`kana-key${isDakuten||isHandakuten?' mark-key':''}`} aria-label={isDakuten?'濁点':isHandakuten?'半濁点':kana} key={kana} onClick={()=>isDakuten?applyMark('dakuten'):isHandakuten?applyMark('handakuten'):addKana(kana)}>{kana}</button>})}</div>)}</div><div className="kana-side"><button className="mark-control" aria-label="小文字" onClick={()=>applyMark('small')}>小文字</button><button onClick={removeLast}>一文字削除</button><button onClick={()=>{if(confirm('入力中の文章を削除しますか？'))setText('')}}>全文削除</button><button className="speak-large" onClick={()=>speak(text)}>話す</button></div></div></div><p className="hint">文字をタップしてから、゛・゜・小文字を押せます。</p></section>
 }
 function History({items,speak,add,clear}:{items:HistoryItem[];speak:(v:string)=>void;add:(v:string)=>void;clear:()=>void}) { return <section><div className="section-head"><h2>発話履歴</h2><button onClick={clear}>履歴をすべて削除</button></div>{items.length===0?<p className="empty">履歴はありません。</p>:<div className="history-list">{items.map(i=><div className="history-row" key={i.id}><button className="history-text" onClick={()=>speak(i.text)}>{i.text}<small>{new Date(i.createdAt).toLocaleString('ja-JP')}</small></button><button onClick={()=>{add(i.text);alert('現在のカテゴリに登録しました。')}}>定型文に登録</button></div>)}</div>}</section> }
 function SettingsView({settings,update,categories,addPhrase,editPhrase,deletePhrase,exportData,importData}:{settings:Settings;update:(v:Partial<Settings>)=>void;categories:Category[];addPhrase:()=>void;editPhrase:(c:string,i:number)=>void;deletePhrase:(c:string,i:number)=>void;exportData:()=>void;importData:(f:File)=>void}) { const voices=window.speechSynthesis?.getVoices?.()||[]; return <section className="settings"><h2>設定</h2><div className="setting-grid"><label>文字サイズ <input type="range" min="24" max="48" step="2" value={settings.fontSize} onChange={e=>update({fontSize:Number(e.target.value)})}/><output>{settings.fontSize}px</output></label><label>ボタンサイズ <input type="range" min="0.9" max="1.25" step="0.05" value={settings.buttonSize} onChange={e=>update({buttonSize:Number(e.target.value)})}/></label><label>音声速度 <input type="range" min="0.6" max="1.4" step="0.1" value={settings.rate} onChange={e=>update({rate:Number(e.target.value)})}/><output>{settings.rate.toFixed(1)}</output></label><label>日本語音声<select value={settings.voiceName} onChange={e=>update({voiceName:e.target.value})}><option value="">自動選択</option>{voices.filter(v=>v.lang.toLowerCase().startsWith('ja')).map(v=><option key={v.name} value={v.name}>{v.name}</option>)}</select></label><label className="check"><input type="checkbox" checked={settings.saveHistory} onChange={e=>update({saveHistory:e.target.checked})}/> 発話履歴を保存する</label></div><h3>定型文の編集</h3>{categories.map(c=><div className="edit-category" key={c.id}><strong>{c.label}</strong>{c.phrases.map((p,i)=><div key={`${c.id}-${i}`}><span>{p}</span><button onClick={()=>editPhrase(c.id,i)}>編集</button><button onClick={()=>deletePhrase(c.id,i)}>削除</button></div>)}{c.id===categories[0].id&&<button onClick={addPhrase}>定型文を追加</button>}</div>)}<h3>バックアップ</h3><div className="backup"><button onClick={exportData}>JSONを書き出す</button><label className="file-button">JSONを読み込む<input type="file" accept="application/json" onChange={e=>e.target.files?.[0]&&importData(e.target.files[0])}/></label></div></section> }
